@@ -5,6 +5,7 @@ podman build -t "$IMAGE" .
 podman run -d \
   --name chat-ai \
   -p 3000:3000 \
+  -v "$(pwd)/client:/app/client:ro,z" \
   --restart always \
   --env-file .env \
   "$IMAGE"
