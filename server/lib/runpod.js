@@ -1,19 +1,18 @@
 const RUNPOD_API_BASE = 'https://api.runpod.ai/v2';
 
 export function buildPayload(messages, options = {}) {
-  const { temperature = 0.7, max_tokens = 1024 } = options;
+  const { model, temperature = 0.2, max_tokens = 4096 } = options;
   return {
-    input: {
-      messages,
-      temperature,
-      max_tokens,
-      stream: true,
-    },
+    model,
+    messages,
+    temperature,
+    max_tokens,
+    stream: true,
   };
 }
 
 export async function callRunPodStream(endpointId, apiKey, payload) {
-  const url = `${RUNPOD_API_BASE}/${endpointId}/runsync`;
+  const url = `${RUNPOD_API_BASE}/${endpointId}/openai/v1/chat/completions`;
 
   const response = await fetch(url, {
     method: 'POST',
@@ -33,7 +32,8 @@ export async function callRunPodStream(endpointId, apiKey, payload) {
 }
 
 export function extractToken(chunk) {
-  if (!chunk || chunk === '[DONE]') return null;
+  if (!chunk) return undefined;
+  if (chunk === '[DONE]') return null;
 
   try {
     const parsed = JSON.parse(chunk);

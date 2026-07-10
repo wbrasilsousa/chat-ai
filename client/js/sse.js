@@ -6,22 +6,17 @@ class SSEClient {
     this.abortController = null;
   }
 
-  send(messages, config = {}) {
+  send(messages) {
     if (this.abortController) {
       this.abortController.abort();
     }
 
     this.abortController = new AbortController();
-    const { temperature = 0.7, maxTokens = 1024 } = config;
 
     fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages,
-        temperature,
-        max_tokens: maxTokens,
-      }),
+      body: JSON.stringify({ messages }),
       signal: this.abortController.signal,
     })
     .then(response => {

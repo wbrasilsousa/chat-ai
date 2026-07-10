@@ -3,8 +3,12 @@ import { buildPayload, callRunPodStream, extractToken } from '../lib/runpod.js';
 
 const router = Router();
 
+const TEMPERATURE = parseFloat(process.env.TEMPERATURE) || 0.2;
+const MAX_TOKENS = parseInt(process.env.MAX_TOKENS, 10) || 4096;
+const MODEL_NAME = process.env.MODEL_NAME;
+
 router.post('/', async (req, res) => {
-  const { messages, temperature, max_tokens } = req.body;
+  const { messages } = req.body;
   const { RUNPOD_API_KEY, ENDPOINT_ID } = process.env;
 
   if (!RUNPOD_API_KEY || !ENDPOINT_ID) {
@@ -20,14 +24,31 @@ router.post('/', async (req, res) => {
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no');
 
+  let doneSent = false;
+  let reader = null;
+
   try {
-    const payload = buildPayload(messages, { temperature, max_tokens });
+    const payload = buildPayload(messages, {
+      temperature: TEMPERATURE,
+      max_tokens: MAX_TOKENS,
+      model: MODEL_NAME,
+    });
     const response = await callRunPodStream(ENDPOINT_ID, RUNPOD_API_KEY, payload);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`RunPod API error ${response.status}: ${errorText}`);
+    }
+
+    req.on('close', () => {
+      reader?.cancel();
+      response.body?.cancel();
+    });
 
     const isChunked = response.headers.get('transfer-encoding')?.includes('chunked');
 
     if (isChunked) {
-      const reader = response.body.getReader();
+      reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
 
@@ -49,7 +70,10 @@ router.post('/', async (req, res) => {
           const token = extractToken(data);
 
           if (token === null) {
-            res.write('data: [DONE]\n\n');
+            if (!doneSent) {
+              res.write('data: [DONE]\n\n');
+              doneSent = true;
+            }
           } else if (token !== undefined) {
             res.write(`data: ${JSON.stringify({ token })}\n\n`);
           }
@@ -61,7 +85,10 @@ router.post('/', async (req, res) => {
         const data = trimmed.startsWith('data: ') ? trimmed.slice(6).trim() : trimmed;
         const token = extractToken(data);
         if (token === null) {
-          res.write('data: [DONE]\n\n');
+          if (!doneSent) {
+            res.write('data: [DONE]\n\n');
+            doneSent = true;
+          }
         } else if (token !== undefined) {
           res.write(`data: ${JSON.stringify({ token })}\n\n`);
         }
@@ -85,11 +112,18 @@ router.post('/', async (req, res) => {
       }
     }
 
-    res.write('data: [DONE]\n\n');
+    if (!doneSent) {
+      res.write('data: [DONE]\n\n');
+    }
     res.end();
   } catch (err) {
     console.error('Chat error:', err);
-    res.write(`data: ${JSON.stringify({ error: err.message || 'Erro interno' })}\n\n`);
+    if (!doneSent) {
+      const msg = process.env.NODE_ENV === 'production'
+        ? 'Erro interno do servidor'
+        : err.message;
+      res.write(`data: ${JSON.stringify({ error: msg })}\n\n`);
+    }
     res.end();
   }
 });

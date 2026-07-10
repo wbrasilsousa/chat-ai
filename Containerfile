@@ -10,9 +10,10 @@ FROM base AS runner
 COPY --from=deps /app/node_modules ./node_modules
 COPY server/ ./server/
 COPY client/ ./client/
-COPY package.json .env ./
+COPY package.json ./
 RUN chown -R appuser:appgroup /app
 USER appuser
 EXPOSE 3000
-ENV NODE_ENV=production
+ARG NODE_ENV=production
+ENV NODE_ENV=$NODE_ENV
 CMD ["node", "server/server.js"]
