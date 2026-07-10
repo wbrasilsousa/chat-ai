@@ -75,9 +75,10 @@ function scheduleRender() {
   if (rafId) return;
   rafId = requestAnimationFrame(() => {
     rafId = null;
-    if (streamingBubbleEl) {
+    const el = streamingBubbleEl || chatContainer.lastElementChild?.querySelector('.bubble');
+    if (el && state.messages.length > 0) {
       const lastMsg = state.messages[state.messages.length - 1];
-      streamingBubbleEl.innerHTML = formatMarkdown(lastMsg.content) + '<span class="typing-cursor">|</span>';
+      el.innerHTML = formatMarkdown(lastMsg.content) + '<span class="typing-cursor">|</span>';
       chatContainer.scrollTop = chatContainer.scrollHeight;
     }
   });

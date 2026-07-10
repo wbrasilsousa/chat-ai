@@ -45,9 +45,7 @@ router.post('/', async (req, res) => {
       response.body?.cancel();
     });
 
-    const isChunked = response.headers.get('transfer-encoding')?.includes('chunked');
-
-    if (isChunked) {
+    if (response.body) {
       reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
@@ -68,6 +66,10 @@ router.post('/', async (req, res) => {
 
           const data = trimmed.startsWith('data: ') ? trimmed.slice(6).trim() : trimmed;
           const token = extractToken(data);
+
+          if (process.env.NODE_ENV !== 'production') {
+            console.log('[RunPod chunk]', line);
+          }
 
           if (token === null) {
             if (!doneSent) {
@@ -95,20 +97,29 @@ router.post('/', async (req, res) => {
       }
     } else {
       const text = await response.text();
-      let content = '';
+      const lines = text.split('\n');
 
-      try {
-        const parsed = JSON.parse(text);
-        content = parsed.output
-          || parsed.choices?.[0]?.message?.content
-          || parsed.response
-          || text;
-      } catch {
-        content = text;
-      }
+      for (const rawLine of lines) {
+        const trimmed = rawLine.trim();
+        if (!trimmed) continue;
 
-      if (content) {
-        res.write(`data: ${JSON.stringify({ token: content })}\n\n`);
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('[RunPod fallback]', trimmed);
+        }
+
+        const data = trimmed.startsWith('data: ') ? trimmed.slice(6).trim() : trimmed;
+        if (data === '[DONE]') {
+          if (!doneSent) {
+            res.write('data: [DONE]\n\n');
+            doneSent = true;
+          }
+          break;
+        }
+
+        const token = extractToken(data);
+        if (token !== undefined && token !== null) {
+          res.write(`data: ${JSON.stringify({ token })}\n\n`);
+        }
       }
     }
 
