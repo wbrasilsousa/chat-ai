@@ -21,6 +21,7 @@ export async function callRunPodStream(endpointId, apiKey, payload) {
       'Authorization': `Bearer ${apiKey}`,
     },
     body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(60000),
   });
 
   if (!response.ok) {
@@ -38,8 +39,16 @@ export function extractToken(chunk) {
   try {
     const parsed = JSON.parse(chunk);
 
-    if (parsed.choices?.[0]?.delta?.content) {
+    if (parsed.choices?.[0]?.delta?.content !== undefined) {
       return parsed.choices[0].delta.content;
+    }
+
+    if (parsed.choices?.[0]?.message?.content) {
+      return parsed.choices[0].message.content;
+    }
+
+    if (parsed.choices?.[0]?.text) {
+      return parsed.choices[0].text;
     }
 
     if (parsed.token !== undefined) {

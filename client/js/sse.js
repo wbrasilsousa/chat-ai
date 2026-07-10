@@ -4,6 +4,8 @@ class SSEClient {
     this.onDone = callbacks.onDone || (() => {});
     this.onError = callbacks.onError || (() => {});
     this.abortController = null;
+    this.timeout = callbacks.timeout || 60000;
+    this._timeoutId = null;
   }
 
   send(messages) {
@@ -12,6 +14,17 @@ class SSEClient {
     }
 
     this.abortController = new AbortController();
+
+    if (this._timeoutId) {
+      clearTimeout(this._timeoutId);
+    }
+    this._timeoutId = setTimeout(() => {
+      if (this.abortController) {
+        this.abortController.abort();
+        this.abortController = null;
+      }
+      this.onError('Tempo limite excedido (60s)');
+    }, this.timeout);
 
     fetch('api/chat', {
       method: 'POST',
@@ -70,6 +83,11 @@ class SSEClient {
       }
     }
 
+    if (this._timeoutId) {
+      clearTimeout(this._timeoutId);
+      this._timeoutId = null;
+    }
+
     if (buffer.trim() && buffer.trim().startsWith('data: ')) {
       const data = buffer.trim().slice(6);
       if (data === '[DONE]') {
@@ -84,6 +102,10 @@ class SSEClient {
   }
 
   abort() {
+    if (this._timeoutId) {
+      clearTimeout(this._timeoutId);
+      this._timeoutId = null;
+    }
     if (this.abortController) {
       this.abortController.abort();
       this.abortController = null;

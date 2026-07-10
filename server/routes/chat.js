@@ -25,6 +25,7 @@ router.post('/', async (req, res) => {
   res.setHeader('X-Accel-Buffering', 'no');
 
   let doneSent = false;
+  let anyTokenSent = false;
   let reader = null;
 
   try {
@@ -67,9 +68,7 @@ router.post('/', async (req, res) => {
           const data = trimmed.startsWith('data: ') ? trimmed.slice(6).trim() : trimmed;
           const token = extractToken(data);
 
-          if (process.env.NODE_ENV !== 'production') {
-            console.log('[RunPod chunk]', line);
-          }
+          console.error('[RunPod chunk]', line);
 
           if (token === null) {
             if (!doneSent) {
@@ -77,6 +76,7 @@ router.post('/', async (req, res) => {
               doneSent = true;
             }
           } else if (token !== undefined) {
+            anyTokenSent = true;
             res.write(`data: ${JSON.stringify({ token })}\n\n`);
           }
         }
@@ -92,6 +92,7 @@ router.post('/', async (req, res) => {
             doneSent = true;
           }
         } else if (token !== undefined) {
+          anyTokenSent = true;
           res.write(`data: ${JSON.stringify({ token })}\n\n`);
         }
       }
@@ -103,9 +104,7 @@ router.post('/', async (req, res) => {
         const trimmed = rawLine.trim();
         if (!trimmed) continue;
 
-        if (process.env.NODE_ENV !== 'production') {
-          console.log('[RunPod fallback]', trimmed);
-        }
+        console.error('[RunPod fallback]', trimmed);
 
         const data = trimmed.startsWith('data: ') ? trimmed.slice(6).trim() : trimmed;
         if (data === '[DONE]') {
@@ -118,13 +117,18 @@ router.post('/', async (req, res) => {
 
         const token = extractToken(data);
         if (token !== undefined && token !== null) {
+          anyTokenSent = true;
           res.write(`data: ${JSON.stringify({ token })}\n\n`);
         }
       }
     }
 
     if (!doneSent) {
-      res.write('data: [DONE]\n\n');
+      if (anyTokenSent) {
+        res.write('data: [DONE]\n\n');
+      } else {
+        res.write(`data: ${JSON.stringify({ error: 'RunPod retornou resposta vazia' })}\n\n`);
+      }
     }
     res.end();
   } catch (err) {

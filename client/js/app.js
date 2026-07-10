@@ -112,14 +112,18 @@ function handleDone() {
     rafId = null;
   }
   if (streamingBubbleEl) {
-    const cursor = streamingBubbleEl.querySelector('.typing-cursor');
-    if (cursor) cursor.remove();
     const lastMsg = state.messages[state.messages.length - 1];
     if (lastMsg && lastMsg.content) {
+      streamingBubbleEl.innerHTML = formatMarkdown(lastMsg.content);
       const actions = document.createElement('div');
       actions.className = 'actions';
       actions.appendChild(createCopyButton(lastMsg.content));
       streamingBubbleEl.appendChild(actions);
+    } else {
+      if (lastMsg && lastMsg.role === 'assistant') {
+        state.messages.pop();
+      }
+      render();
     }
     streamingBubbleEl = null;
   }
