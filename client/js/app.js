@@ -17,10 +17,9 @@ const chatContainer = $('#chat-container');
 const inputArea = $('#input-area textarea');
 const sendBtn = $('#send-btn');
 const clearBtn = $('#clear-btn');
-const themeBtn = $('#theme-btn');
+
 
 function init() {
-  loadTheme();
   sseClient = new SSEClient({
     onToken: handleToken,
     onDone: handleDone,
@@ -39,7 +38,6 @@ function bindEvents() {
   });
   inputArea.addEventListener('input', autoResize);
   clearBtn.addEventListener('click', clearChat);
-  themeBtn.addEventListener('click', toggleTheme);
 }
 
 function sendMessage() {
@@ -202,19 +200,6 @@ function clearChat() {
   app.classList.remove('expanded');
   app.classList.add('initial');
   chatContainer.innerHTML = '';
-}
-
-function toggleTheme() {
-  const html = document.documentElement;
-  const current = html.getAttribute('data-theme');
-  const next = current === 'dark' ? 'light' : 'dark';
-  html.setAttribute('data-theme', next);
-  localStorage.setItem('chat-ai-theme', next);
-}
-
-function loadTheme() {
-  const saved = localStorage.getItem('chat-ai-theme') || 'dark';
-  document.documentElement.setAttribute('data-theme', saved);
 }
 
 init();

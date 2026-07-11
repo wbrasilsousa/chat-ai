@@ -4,7 +4,7 @@ class SSEClient {
     this.onDone = callbacks.onDone || (() => {});
     this.onError = callbacks.onError || (() => {});
     this.abortController = null;
-    this.timeout = callbacks.timeout || 60000;
+    this.timeout = callbacks.timeout || 180000;
     this._timeoutId = null;
   }
 
@@ -23,7 +23,7 @@ class SSEClient {
         this.abortController.abort();
         this.abortController = null;
       }
-      this.onError('Tempo limite excedido (60s)');
+      this.onError('Tempo limite excedido (180s)');
     }, this.timeout);
 
     fetch('api/chat', {

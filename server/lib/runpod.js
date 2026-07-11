@@ -21,7 +21,7 @@ export async function callRunPodStream(endpointId, apiKey, payload) {
       'Authorization': `Bearer ${apiKey}`,
     },
     body: JSON.stringify(payload),
-    signal: AbortSignal.timeout(60000),
+    signal: AbortSignal.timeout(180000),
   });
 
   if (!response.ok) {
